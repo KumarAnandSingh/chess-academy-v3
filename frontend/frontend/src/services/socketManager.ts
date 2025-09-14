@@ -54,7 +54,10 @@ export class SocketManager {
 
     console.log('🔌 Connecting to multiplayer server...');
     
-    this.socket = io('http://localhost:3001', {
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+    console.log('🔌 Connecting to:', backendUrl);
+
+    this.socket = io(backendUrl, {
       transports: ['websocket', 'polling'],
       timeout: 10000,
       forceNew: true,

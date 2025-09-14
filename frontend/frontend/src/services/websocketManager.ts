@@ -258,9 +258,10 @@ class WebSocketManager {
 
 // Create singleton instance
 const defaultConfig: MultiplayerConfig = {
-  backendUrl: process.env.NODE_ENV === 'production' 
-    ? 'wss://your-production-domain.com'  // Replace with actual production URL
-    : 'http://localhost:3001',
+  backendUrl: import.meta.env.VITE_BACKEND_URL ||
+    (import.meta.env.MODE === 'production'
+      ? 'https://backend-coral-kappa-57.vercel.app'
+      : 'http://localhost:3001'),
   reconnectAttempts: 5,
   reconnectDelay: 2000,
   heartbeatInterval: 30000,
