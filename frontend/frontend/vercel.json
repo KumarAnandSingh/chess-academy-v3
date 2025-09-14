@@ -1,9 +1,13 @@
 {
-  "buildCommand": "npm run build",
+  "version": 2,
+  "buildCommand": "npm run build -- --mode production",
   "outputDirectory": "dist",
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "vite",
+  "env": {
+    "VITE_BACKEND_URL": "https://backend-coral-kappa-57.vercel.app"
+  },
   "rewrites": [
     {
       "source": "/(.*)",

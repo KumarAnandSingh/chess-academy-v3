@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from './button';
 import { Progress } from './progress';
 import { Badge } from './badge';
+import { cn } from '../../lib/utils';
 import DailyPlanHorizontal from '../DailyPlanHorizontal';
 
 // Dashboard Card Component
