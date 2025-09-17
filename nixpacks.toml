@@ -1,0 +1,11 @@
+[start]
+cmd = "cd backend && npm start"
+
+[build]
+cmd = "cd backend && npm install"
+
+[setup]
+providers = ["node"]
+
+[variables]
+NODE_ENV = "production"
