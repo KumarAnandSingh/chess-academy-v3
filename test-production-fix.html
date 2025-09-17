@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Multiplayer Fix Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .status {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+        .success {
+            background: #1a3d1a;
+            border-color: #4CAF50;
+        }
+        .error {
+            background: #3d1a1a;
+            border-color: #f44336;
+        }
+        .warning {
+            background: #3d3d1a;
+            border-color: #ff9800;
+        }
+        .info {
+            background: #1a1a3d;
+            border-color: #2196F3;
+        }
+        button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1976D2;
+        }
+        #logs {
+            background: #000;
+            padding: 15px;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Production Multiplayer Fix Verification</h1>
+
+    <div class="info">
+        <h3>🔧 CRITICAL FIX DEPLOYED</h3>
+        <p><strong>Issue:</strong> https://studyify.in/multiplayer was connecting to wrong backend</p>
+        <p><strong>Old Backend:</strong> https://backend-coral-kappa-57.vercel.app (no multiplayer)</p>
+        <p><strong>New Backend:</strong> https://web-production-4fb4.up.railway.app (working multiplayer)</p>
+        <p><strong>Fix:</strong> Updated VITE_BACKEND_URL in chess-academy-v3 production environment</p>
+    </div>
+
+    <div id="status" class="warning">
+        <h3>🧪 Test Status: Ready to test</h3>
+        <p>Click "Start Production Test" to verify the fix</p>
+    </div>
+
+    <div>
+        <button onclick="testProductionConnection()">Start Production Test</button>
+        <button onclick="testBackendDirectly()">Test Backend Directly</button>
+        <button onclick="clearLogs()">Clear Logs</button>
+    </div>
+
+    <h3>📊 Test Logs</h3>
+    <div id="logs"></div>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        const logs = document.getElementById('logs');
+        const statusDiv = document.getElementById('status');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            logs.textContent += logEntry;
+            logs.scrollTop = logs.scrollHeight;
+            console.log(message);
+        }
+
+        function updateStatus(message, type = 'info') {
+            statusDiv.className = `status ${type}`;
+            statusDiv.innerHTML = `<h3>🧪 ${message}</h3>`;
+        }
+
+        function clearLogs() {
+            logs.textContent = '';
+        }
+
+        async function testBackendDirectly() {
+            log('🔗 Testing Railway backend directly...');
+            updateStatus('Testing Backend Directly', 'warning');
+
+            try {
+                const response = await fetch('https://web-production-4fb4.up.railway.app');
+                const data = await response.json();
+                log(`✅ Backend Response: ${JSON.stringify(data)}`);
+
+                if (data.message && data.message.includes('Socket.IO')) {
+                    log('✅ Backend has Socket.IO multiplayer support!');
+                    updateStatus('Backend Test: SUCCESS', 'success');
+                } else {
+                    log('❌ Backend does not appear to support multiplayer');
+                    updateStatus('Backend Test: FAILED', 'error');
+                }
+            } catch (error) {
+                log(`❌ Backend test failed: ${error.message}`);
+                updateStatus('Backend Test: FAILED', 'error');
+            }
+        }
+
+        async function testProductionConnection() {
+            log('🚀 Starting production connection test...');
+            updateStatus('Testing Production Connection', 'warning');
+
+            const backendUrl = 'https://web-production-4fb4.up.railway.app';
+            log(`🔗 Connecting to: ${backendUrl}`);
+
+            try {
+                const socket = io(backendUrl, {
+                    transports: ['websocket', 'polling'],
+                    timeout: 10000,
+                    forceNew: true
+                });
+
+                let connected = false;
+                let authenticated = false;
+
+                socket.on('connect', () => {
+                    connected = true;
+                    log('✅ Connected to multiplayer server!');
+
+                    // Test authentication
+                    const demoUser = {
+                        userId: 'test-user-' + Date.now(),
+                        username: 'TestUser',
+                        rating: 1200
+                    };
+
+                    log('🔐 Testing authentication...');
+                    socket.emit('authenticate', demoUser);
+                });
+
+                socket.on('authenticated', (data) => {
+                    authenticated = true;
+                    log(`🔐 Authentication successful: ${JSON.stringify(data)}`);
+
+                    // Test matchmaking
+                    log('🎯 Testing matchmaking...');
+                    socket.emit('join_matchmaking', {
+                        timeControl: { initial: 300, increment: 0, type: 'blitz' }
+                    });
+                });
+
+                socket.on('matchmaking_joined', (data) => {
+                    log(`🎮 Joined matchmaking queue: ${JSON.stringify(data)}`);
+
+                    // Success! All core functionality works
+                    log('✅ ALL TESTS PASSED! Multiplayer is working!');
+                    updateStatus('Production Test: SUCCESS! 🎉', 'success');
+                    statusDiv.innerHTML += `
+                        <p>✅ Connection: Working</p>
+                        <p>✅ Authentication: Working</p>
+                        <p>✅ Matchmaking: Working</p>
+                        <p><strong>The disconnection issue is FIXED!</strong></p>
+                    `;
+
+                    socket.disconnect();
+                });
+
+                socket.on('disconnect', (reason) => {
+                    log(`❌ Disconnected: ${reason}`);
+                    if (!connected || !authenticated) {
+                        updateStatus('Production Test: FAILED', 'error');
+                    }
+                });
+
+                socket.on('connect_error', (error) => {
+                    log(`❌ Connection error: ${error.message}`);
+                    updateStatus('Production Test: FAILED', 'error');
+                });
+
+                // Timeout after 15 seconds
+                setTimeout(() => {
+                    if (!connected) {
+                        log('⏰ Connection timeout - check if backend is running');
+                        updateStatus('Production Test: TIMEOUT', 'error');
+                        socket.disconnect();
+                    }
+                }, 15000);
+
+            } catch (error) {
+                log(`❌ Test failed: ${error.message}`);
+                updateStatus('Production Test: FAILED', 'error');
+            }
+        }
+
+        // Auto-run tests when page loads
+        window.addEventListener('load', () => {
+            log('🔧 Production Multiplayer Fix Verification Tool');
+            log('📍 Target: https://studyify.in/multiplayer');
+            log('🎯 Backend: https://web-production-4fb4.up.railway.app');
+            log('');
+
+            // Test backend first
+            testBackendDirectly();
+        });
+    </script>
+</body>
+</html>

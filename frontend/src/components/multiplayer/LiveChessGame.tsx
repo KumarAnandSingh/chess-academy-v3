@@ -111,7 +111,6 @@ const LiveChessBoard: React.FC<LiveChessBoardProps> = ({ gameId }) => {
     <div className="w-full max-w-2xl mx-auto">
       <div className="bg-[#312e2b] p-4 rounded-lg shadow-2xl">
         <Chessboard
-          id={gameId}
           position={gamePosition}
           onPieceDrop={onPieceDrop}
           boardOrientation={boardOrientation}

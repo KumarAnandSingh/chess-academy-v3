@@ -153,3 +153,4 @@ dist/
 frontend/frontend/dist/
 backend/dist/
 backend/build/
+.vercel

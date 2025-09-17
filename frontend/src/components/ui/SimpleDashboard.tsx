@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Brain, Puzzle, Monitor, Trophy, Target, Crown, Zap, TrendingUp, Gamepad2, Save } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './card';
 import { Button } from './button';
+import { cn } from '../../lib/utils';
 import { Progress } from './progress';
 import { Badge } from './badge';
 import DailyPlanHorizontal from '../DailyPlanHorizontal';
