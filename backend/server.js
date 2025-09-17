@@ -127,7 +127,12 @@ const server = createServer(app);
 
 // CORS configuration
 app.use(cors({
-  origin: ["https://elaborate-twilight-0dd8b0.netlify.app", "http://localhost:5173", "http://localhost:3000"],
+  origin: [
+    "https://studyify.in",
+    "https://elaborate-twilight-0dd8b0.netlify.app",
+    "http://localhost:5173",
+    "http://localhost:3000"
+  ],
   methods: ["GET", "POST"],
   credentials: true
 }));
@@ -148,7 +153,12 @@ app.get('/', (req, res) => {
 // Socket.IO setup
 const io = new SocketIOServer(server, {
   cors: {
-    origin: ["https://elaborate-twilight-0dd8b0.netlify.app", "http://localhost:5173", "http://localhost:3000"],
+    origin: [
+      "https://studyify.in",
+      "https://elaborate-twilight-0dd8b0.netlify.app",
+      "http://localhost:5173",
+      "http://localhost:3000"
+    ],
     methods: ["GET", "POST"],
     credentials: true
   },
@@ -349,14 +359,113 @@ io.on('connection', (socket) => {
     if (isPlayer) {
       // Player rejoining their game
       console.log('✅ Player rejoining game:', player.username);
-      socket.emit('game_started', gameState.getGameData(socket.id));
+      const gameData = gameState.getGameData(socket.id);
+
+      console.log('🎮 Sending game_joined event with data:', {
+        success: true,
+        gameState: gameData,
+        playerColor: gameData.playerColor,
+        message: 'Successfully joined game'
+      });
+
+      // CRITICAL FIX: Send game_joined event instead of game_started for navigation from lobby
+      socket.emit('game_joined', {
+        success: true,
+        gameState: gameData,
+        playerColor: gameData.playerColor,
+        message: 'Successfully joined game'
+      });
     } else {
       // Spectator joining
       console.log('👀 Spectator joining game:', player.username);
       gameState.spectators.push(socket.id);
-      socket.emit('game_started', {
-        ...gameState.getGameData(socket.id),
-        playerColor: 'spectator'
+      const gameData = gameState.getGameData(socket.id);
+
+      socket.emit('game_joined', {
+        success: true,
+        gameState: gameData,
+        playerColor: 'spectator',
+        message: 'Successfully joined as spectator'
+      });
+    }
+  });
+
+  // CRITICAL FIX: Add reconnect_to_game handler for page refreshes and direct navigation
+  socket.on('reconnect_to_game', (data) => {
+    console.log('🔄 Reconnect to game request:', data);
+
+    const { gameId } = data;
+    const gameState = activeGames.get(gameId);
+
+    if (!gameState) {
+      console.log('❌ Game not found for reconnection:', gameId);
+      socket.emit('join_game_error', {
+        message: 'Game not found or has ended',
+        gameId,
+        errorType: 'game_not_found'
+      });
+      return;
+    }
+
+    const player = authenticatedPlayers.get(socket.id);
+    if (!player) {
+      socket.emit('join_game_error', {
+        message: 'Not authenticated',
+        errorType: 'not_authenticated'
+      });
+      return;
+    }
+
+    // Check if player was part of this game
+    const wasWhitePlayer = gameState.white.userId === player.userId;
+    const wasBlackPlayer = gameState.black.userId === player.userId;
+    const isReconnectingPlayer = wasWhitePlayer || wasBlackPlayer;
+
+    if (isReconnectingPlayer) {
+      // Update socket ID for reconnecting player
+      if (wasWhitePlayer) {
+        gameState.white.socketId = socket.id;
+        gameState.white.status = 'online';
+      } else {
+        gameState.black.socketId = socket.id;
+        gameState.black.status = 'online';
+      }
+
+      console.log('✅ Player reconnected to game:', player.username);
+
+      const gameData = gameState.getGameData(socket.id);
+
+      // Send game_rejoined event for reconnections
+      socket.emit('game_rejoined', {
+        success: true,
+        gameState: gameData,
+        playerColor: gameData.playerColor,
+        message: 'Successfully reconnected to game'
+      });
+
+      // Notify opponent of reconnection
+      const opponentSocketId = wasWhitePlayer ? gameState.black.socketId : gameState.white.socketId;
+      const opponentSocket = io.sockets.sockets.get(opponentSocketId);
+      if (opponentSocket) {
+        opponentSocket.emit('opponent_reconnected', {
+          playerColor: wasWhitePlayer ? 'white' : 'black',
+          username: player.username
+        });
+      }
+    } else {
+      // Spectator reconnecting
+      console.log('👀 Spectator reconnecting to game:', player.username);
+      if (!gameState.spectators.includes(socket.id)) {
+        gameState.spectators.push(socket.id);
+      }
+
+      const gameData = gameState.getGameData(socket.id);
+
+      socket.emit('game_rejoined', {
+        success: true,
+        gameState: gameData,
+        playerColor: 'spectator',
+        message: 'Successfully reconnected as spectator'
       });
     }
   });

@@ -134,14 +134,27 @@ const ImprovedLiveChessGame: React.FC<ImprovedLiveChessGameProps> = ({ gameId })
         console.log('🔄 Cleared join_game timeout - success!');
       }
 
-      if (data.gameState) {
-        setGameData(data.gameState);
+      if (data.success && data.gameState) {
+        // CRITICAL FIX: Handle the new backend response format
+        const gameStateData = data.gameState;
+
+        setGameData({
+          white: gameStateData.white,
+          black: gameStateData.black,
+          turn: gameStateData.turn,
+          whiteTime: gameStateData.whiteTime,
+          blackTime: gameStateData.blackTime,
+          moveNumber: gameStateData.moveNumber,
+          position: gameStateData.position,
+          timeControl: gameStateData.timeControl
+        });
+
         setGameStatus('active');
         setPlayerColor(data.playerColor);
-        setGamePosition(data.gameState.position);
-        chess.load(data.gameState.position);
-        setDisplayWhiteTime(data.gameState.whiteTime);
-        setDisplayBlackTime(data.gameState.blackTime);
+        setGamePosition(gameStateData.position);
+        chess.load(gameStateData.position);
+        setDisplayWhiteTime(gameStateData.whiteTime);
+        setDisplayBlackTime(gameStateData.blackTime);
         setConnectionStatus('connected');
         console.log('🎮 Game state loaded, player assigned as:', data.playerColor);
       }
@@ -149,14 +162,29 @@ const ImprovedLiveChessGame: React.FC<ImprovedLiveChessGameProps> = ({ gameId })
 
     const gameRejoinedCallback = (data: any) => {
       console.log('🔄 Game rejoined after navigation:', data);
-      if (data.gameState) {
-        setGameData(data.gameState);
+      if (data.success && data.gameState) {
+        // CRITICAL FIX: Handle the new backend response format for reconnection
+        const gameStateData = data.gameState;
+
+        setGameData({
+          white: gameStateData.white,
+          black: gameStateData.black,
+          turn: gameStateData.turn,
+          whiteTime: gameStateData.whiteTime,
+          blackTime: gameStateData.blackTime,
+          moveNumber: gameStateData.moveNumber,
+          position: gameStateData.position,
+          timeControl: gameStateData.timeControl
+        });
+
         setGameStatus('active');
         setPlayerColor(data.playerColor);
-        setGamePosition(data.gameState.position);
-        chess.load(data.gameState.position);
-        setDisplayWhiteTime(data.gameState.whiteTime);
-        setDisplayBlackTime(data.gameState.blackTime);
+        setGamePosition(gameStateData.position);
+        chess.load(gameStateData.position);
+        setDisplayWhiteTime(gameStateData.whiteTime);
+        setDisplayBlackTime(gameStateData.blackTime);
+        setConnectionStatus('connected');
+        console.log('🎮 Game state reloaded after reconnection, player color:', data.playerColor);
       }
     };
 
@@ -231,6 +259,12 @@ const ImprovedLiveChessGame: React.FC<ImprovedLiveChessGameProps> = ({ gameId })
       }
     };
 
+    const opponentReconnectedCallback = (data: any) => {
+      console.log('👋 Opponent reconnected:', data);
+      // You could show a notification here if desired
+      // For now, just log it for debugging
+    };
+
     // Listen to connection events with proper callback references
     socketManager.on('connection_status', connectionStatusCallback);
     socketManager.on('game_started', gameStartedCallback);
@@ -240,6 +274,7 @@ const ImprovedLiveChessGame: React.FC<ImprovedLiveChessGameProps> = ({ gameId })
     socketManager.on('game_ended', gameEndedCallback);
     socketManager.on('chat_message', chatMessageCallback);
     socketManager.on('join_game_error', joinGameErrorCallback);
+    socketManager.on('opponent_reconnected', opponentReconnectedCallback);
 
     // Enhanced game joining logic with proper timing and error handling
     const joinGameWithRetry = (retryCount = 0) => {
@@ -355,6 +390,7 @@ const ImprovedLiveChessGame: React.FC<ImprovedLiveChessGameProps> = ({ gameId })
       socketManager.removeCallback('game_ended', gameEndedCallback);
       socketManager.removeCallback('chat_message', chatMessageCallback);
       socketManager.removeCallback('join_game_error', joinGameErrorCallback);
+      socketManager.removeCallback('opponent_reconnected', opponentReconnectedCallback);
 
       console.log('🧹 Game cleanup: Removed specific callbacks, preserved socket connection');
     };
