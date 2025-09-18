@@ -1,8 +1,8 @@
-import express from 'express';
-import { createServer } from 'http';
-import { Server as SocketIOServer } from 'socket.io';
-import { Chess } from 'chess.js';
-import cors from 'cors';
+const express = require('express');
+const { createServer } = require('http');
+const { Server: SocketIOServer } = require('socket.io');
+const { Chess } = require('chess.js');
+const cors = require('cors');
 
 // In-memory storage (use Redis/MongoDB in production)
 const activeGames = new Map(); // gameId -> gameState
@@ -147,6 +147,15 @@ app.get('/', (req, res) => {
     activeGames: activeGames.size,
     connectedPlayers: connectedPlayers.size,
     matchmakingQueue: matchmakingQueue.length
+  });
+});
+
+// Railway health check endpoint
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    healthy: true
   });
 });
 
@@ -674,10 +683,11 @@ setInterval(() => {
 
 // Start server
 const PORT = process.env.PORT || 3002;
-server.listen(PORT, () => {
+const HOST = process.env.HOST || '0.0.0.0'; // Railway requires binding to 0.0.0.0
+server.listen(PORT, HOST, () => {
   console.log('🚀 Chess Academy Backend Server running on port', PORT);
   console.log('🌍 Environment:', process.env.NODE_ENV || 'development');
-  console.log('📍 Server URL: http://localhost:' + PORT);
+  console.log('📍 Server URL: http://' + HOST + ':' + PORT);
 });
 
-export default server;
+module.exports = server;

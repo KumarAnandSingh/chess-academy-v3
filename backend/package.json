@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Complete backend server for Chess Academy with all game functionality",
   "main": "server.js",
-  "type": "module",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",

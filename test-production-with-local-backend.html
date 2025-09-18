@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Academy Multiplayer Test</title>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #cce7ff; color: #004085; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        #log { background: #f8f9fa; padding: 15px; border-radius: 5px; height: 400px; overflow-y: auto; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>Chess Academy Multiplayer Test</h1>
+    <p>Testing multiplayer functionality with local backend</p>
+
+    <div id="status" class="status info">Initializing...</div>
+
+    <div>
+        <button onclick="testConnection()">Test Connection</button>
+        <button onclick="testAuthentication()">Test Authentication</button>
+        <button onclick="testMatchmaking()">Test Matchmaking</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <h3>Log:</h3>
+    <div id="log"></div>
+
+    <script>
+        // Use local backend for testing
+        const BACKEND_URL = 'http://localhost:3005';
+
+        let socket = null;
+        let isAuthenticated = false;
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toISOString().substr(11, 8);
+            const logDiv = document.getElementById('log');
+            const messageDiv = document.createElement('div');
+            messageDiv.innerHTML = `[${timestamp}] ${message}`;
+            messageDiv.style.color = type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#666';
+            logDiv.appendChild(messageDiv);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        function testConnection() {
+            log('🔌 Testing Socket.IO connection to ' + BACKEND_URL);
+            updateStatus('Connecting...', 'info');
+
+            if (socket) {
+                socket.disconnect();
+            }
+
+            socket = io(BACKEND_URL, {
+                transports: ['polling', 'websocket'],
+                timeout: 10000
+            });
+
+            socket.on('connect', () => {
+                log('✅ Connected successfully! Socket ID: ' + socket.id, 'success');
+                updateStatus('Connected to backend', 'success');
+            });
+
+            socket.on('disconnect', (reason) => {
+                log('❌ Disconnected: ' + reason, 'error');
+                updateStatus('Disconnected', 'error');
+            });
+
+            socket.on('connect_error', (error) => {
+                log('❌ Connection error: ' + error.message, 'error');
+                updateStatus('Connection failed', 'error');
+            });
+
+            socket.on('authenticated', (data) => {
+                log('✅ Authentication successful: ' + JSON.stringify(data), 'success');
+                isAuthenticated = true;
+                updateStatus('Authenticated', 'success');
+            });
+
+            socket.on('matchmaking_joined', (data) => {
+                log('🎯 Joined matchmaking: ' + JSON.stringify(data), 'success');
+            });
+
+            socket.on('game_started', (data) => {
+                log('🎮 Game started! ' + JSON.stringify(data), 'success');
+                updateStatus('Game started!', 'success');
+            });
+
+            socket.on('game_joined', (data) => {
+                log('✅ Game joined successfully: ' + JSON.stringify(data), 'success');
+            });
+
+            socket.on('error', (data) => {
+                log('❌ Server error: ' + JSON.stringify(data), 'error');
+            });
+        }
+
+        function testAuthentication() {
+            if (!socket || !socket.connected) {
+                log('❌ Not connected! Connect first.', 'error');
+                return;
+            }
+
+            log('🔐 Testing authentication...');
+
+            const userData = {
+                userId: 'test-user-' + Date.now(),
+                username: 'TestPlayer',
+                rating: 1200
+            };
+
+            log('📤 Sending authenticate event: ' + JSON.stringify(userData));
+            socket.emit('authenticate', userData);
+        }
+
+        function testMatchmaking() {
+            if (!isAuthenticated) {
+                log('❌ Not authenticated! Authenticate first.', 'error');
+                return;
+            }
+
+            log('🎯 Testing matchmaking...');
+
+            const matchmakingData = {
+                timeControl: {
+                    initial: 600, // 10 minutes
+                    increment: 10,
+                    type: 'rapid'
+                }
+            };
+
+            log('📤 Sending join_matchmaking event: ' + JSON.stringify(matchmakingData));
+            socket.emit('join_matchmaking', matchmakingData);
+        }
+
+        // Auto-start connection test
+        window.onload = () => {
+            log('🚀 Starting automated test...');
+            testConnection();
+        };
+    </script>
+</body>
+</html>
