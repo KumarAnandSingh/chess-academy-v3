@@ -66,34 +66,34 @@ export class SocketManager {
     // Production-first backend URL configuration with fallbacks
     const backendUrl = import.meta.env.VITE_BACKEND_URL ||
                       (import.meta.env.MODE === 'production'
-                        ? 'https://web-production-4fb4.up.railway.app'
+                        ? 'https://chess-academy-backend-o3iy.onrender.com'
                         : 'http://localhost:3002');
 
     console.log('🔗 Connecting to:', backendUrl);
     console.log('🌍 Environment mode:', import.meta.env.MODE);
 
     this.socket = io(backendUrl, {
-      // Railway-optimized transport configuration
+      // Render.com-optimized transport configuration
       transports: ['polling', 'websocket'], // Allow upgrade to websockets for better performance
       forceNew: false,
 
-      // Timeouts optimized for Railway deployment
-      timeout: 20000, // Railway-optimized timeout
+      // Timeouts optimized for Render.com deployment
+      timeout: 20000, // Render.com-optimized timeout
 
-      // Enhanced reconnection strategy for Railway
+      // Enhanced reconnection strategy for Render.com
       reconnection: true,
       reconnectionDelay: 2000, // Start with 2 second delay
-      reconnectionDelayMax: 30000, // Max 30 second delay for Railway cold starts
-      reconnectionAttempts: 15, // More attempts for Railway stability
+      reconnectionDelayMax: 30000, // Max 30 second delay for Render.com cold starts
+      reconnectionAttempts: 15, // More attempts for Render.com stability
       randomizationFactor: 0.3, // Less jitter for better predictability
 
-      // Railway-friendly options
-      upgrade: true, // Allow upgrade to websockets for better Railway performance
+      // Render.com-friendly options
+      upgrade: true, // Allow upgrade to websockets for better Render.com performance
       rememberUpgrade: true, // Remember successful upgrades
       autoConnect: true,
       withCredentials: false,
 
-      // Enhanced headers for Railway CORS
+      // Enhanced headers for Render.com CORS
       extraHeaders: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET,PUT,POST,DELETE,OPTIONS',
@@ -101,16 +101,16 @@ export class SocketManager {
         'Cache-Control': 'no-cache'
       },
 
-      // Query parameters for Railway debugging
+      // Query parameters for Render.com debugging
       query: {
         client: 'chess-academy',
         version: '1.0.0',
-        platform: 'railway',
+        platform: 'render',
         timestamp: Date.now()
       }
     });
 
-    // Enhanced connection events for Railway stability
+    // Enhanced connection events for Render.com stability
     this.socket.on('connect', () => {
       console.log('✅ Connected to multiplayer server, Socket ID:', this.socket?.id);
       console.log('🚀 Transport:', this.socket?.io.engine.transport.name);
@@ -118,7 +118,7 @@ export class SocketManager {
       this.lastHeartbeat = Date.now();
       this.emitInternal('connection_status', { connected: true });
 
-      // Start aggressive heartbeat for Railway stability
+      // Start aggressive heartbeat for Render.com stability
       this.startHeartbeat();
       this.startConnectionHealthMonitoring();
 
@@ -179,7 +179,7 @@ export class SocketManager {
       this.emitInternal('reconnect_failed', {});
     });
 
-    // Handle Railway heartbeat
+    // Handle Render.com heartbeat
     this.socket.on('heartbeat', (data) => {
       console.log('💓 Heartbeat received:', data.timestamp);
       this.lastHeartbeat = Date.now();
@@ -286,13 +286,13 @@ export class SocketManager {
   private startHeartbeat() {
     this.stopHeartbeat(); // Clear any existing interval
 
-    // Send ping every 25 seconds to keep Railway connection alive
+    // Send ping every 25 seconds to keep Render.com connection alive
     this.heartbeatInterval = setInterval(() => {
       if (this.socket?.connected) {
         console.log('💓 Sending heartbeat ping...');
         this.socket.emit('ping', { timestamp: Date.now() });
       }
-    }, 25000); // 25 seconds - well within Railway's timeout window
+    }, 25000); // 25 seconds - well within Render.com's timeout window
   }
 
   private stopHeartbeat() {
@@ -533,9 +533,9 @@ export class SocketManager {
     return this.socket?.id;
   }
 
-  // Railway-specific connection management
+  // Render.com-specific connection management
   forceReconnect() {
-    console.log('🔄 Forcing reconnection for Railway stability...');
+    console.log('🔄 Forcing reconnection for Render.com stability...');
     this.stopHeartbeat();
     this.stopConnectionHealthMonitoring();
 
@@ -543,7 +543,7 @@ export class SocketManager {
       this.socket.disconnect();
     }
 
-    // Wait a moment then reconnect to handle Railway cold starts
+    // Wait a moment then reconnect to handle Render.com cold starts
     setTimeout(() => {
       this.connect();
     }, 2000);
