@@ -29,7 +29,8 @@ class SimpleWebSocketService {
           "http://localhost:5173",
           "http://localhost:5174", 
           "http://localhost:3000",
-          "https://studyify.in"
+          "https://studyify.in",
+          "https://www.studyify.in"
         ],
         methods: ["GET", "POST"],
         credentials: true
@@ -130,23 +131,39 @@ class SimpleWebSocketService {
             player.socket.join(gameId);
             opponent.socket.join(gameId);
 
-            // Notify both players
-            this.io.to(gameId).emit('game_started', {
+            // Notify both players with individualized payloads
+            const basePayload = {
               gameId: gameId,
-              white: { 
-                username: game.white.username, 
+              white: {
+                username: game.white.username,
                 rating: game.white.rating,
-                userId: game.white.userId 
+                userId: game.white.userId
               },
-              black: { 
-                username: game.black.username, 
+              black: {
+                username: game.black.username,
                 rating: game.black.rating,
-                userId: game.black.userId 
+                userId: game.black.userId
               },
               timeControl: game.timeControl,
               position: chess.fen(),
               whiteTime: game.whiteTime,
-              blackTime: game.blackTime
+              blackTime: game.blackTime,
+              turn: game.chess.turn(),
+              moveNumber: game.chess.moveNumber()
+            };
+
+            game.white.socket.emit('game_started', {
+              success: true,
+              ...basePayload,
+              playerColor: 'white',
+              message: 'Game started'
+            });
+
+            game.black.socket.emit('game_started', {
+              success: true,
+              ...basePayload,
+              playerColor: 'black',
+              message: 'Game started'
             });
 
             console.log(`🎮 Game created: ${gameId} - ${game.white.username} (white) vs ${game.black.username} (black)`);

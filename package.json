@@ -3,11 +3,10 @@
   "version": "1.0.0",
   "description": "Chess Academy v3 Backend for Railway deployment",
   "main": "backend/server.js",
-  "type": "module",
   "scripts": {
-    "start": "cd backend && npm install && node server.js",
-    "dev": "cd backend && npm install && node server.js",
-    "build": "cd backend && npm install"
+    "start": "node backend/server.js",
+    "dev": "NODE_ENV=development node backend/server.js",
+    "build": "npm install"
   },
   "engines": {
     "node": ">=18.0.0"

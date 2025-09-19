@@ -129,6 +129,7 @@ const server = createServer(app);
 app.use(cors({
   origin: [
     "https://studyify.in",
+    "https://www.studyify.in",
     "https://elaborate-twilight-0dd8b0.netlify.app",
     "http://localhost:5173",
     "http://localhost:3000"
@@ -164,6 +165,7 @@ const io = new SocketIOServer(server, {
   cors: {
     origin: [
       "https://studyify.in",
+      "https://www.studyify.in",
       "https://elaborate-twilight-0dd8b0.netlify.app",
       "http://localhost:5173",
       "http://localhost:3000"
@@ -209,42 +211,22 @@ function notifyGameStart(gameState, io) {
   const blackSocket = io.sockets.sockets.get(gameState.black.socketId);
 
   if (whiteSocket) {
+    const whiteView = gameState.getGameData(gameState.white.socketId);
     whiteSocket.emit('game_started', {
-      gameId: gameState.id,
-      color: 'white',
-      opponent: {
-        userId: gameState.black.userId,
-        username: gameState.black.username,
-        rating: gameState.black.rating,
-        socketId: gameState.black.socketId,
-        status: 'online'
-      },
-      timeControl: gameState.timeControl,
-      position: gameState.position,
-      whiteTime: gameState.whiteTime,
-      blackTime: gameState.blackTime,
-      turn: gameState.turn,
-      moveNumber: gameState.moveNumber
+      success: true,
+      gameState: whiteView,
+      playerColor: 'white',
+      message: 'Game started'
     });
   }
 
   if (blackSocket) {
+    const blackView = gameState.getGameData(gameState.black.socketId);
     blackSocket.emit('game_started', {
-      gameId: gameState.id,
-      color: 'black',
-      opponent: {
-        userId: gameState.white.userId,
-        username: gameState.white.username,
-        rating: gameState.white.rating,
-        socketId: gameState.white.socketId,
-        status: 'online'
-      },
-      timeControl: gameState.timeControl,
-      position: gameState.position,
-      whiteTime: gameState.whiteTime,
-      blackTime: gameState.blackTime,
-      turn: gameState.turn,
-      moveNumber: gameState.moveNumber
+      success: true,
+      gameState: blackView,
+      playerColor: 'black',
+      message: 'Game started'
     });
   }
 }

@@ -45,6 +45,7 @@ export class SocketManager {
   private heartbeatInterval: number | null = null;
   private connectionHealthInterval: number | null = null;
   private lastHeartbeat: number = 0;
+  private backendUrl: string | null = null;
   
   constructor() {
     this.connect();
@@ -63,11 +64,19 @@ export class SocketManager {
       this.socket.disconnect();
     }
 
-    // Production-first backend URL configuration with fallbacks
-    const backendUrl = import.meta.env.VITE_BACKEND_URL ||
-                      (import.meta.env.MODE === 'production'
-                        ? 'https://chess-academy-backend-o3iy.onrender.com'
-                        : 'http://localhost:3002');
+    const configuredBackend = import.meta.env.VITE_BACKEND_URL?.trim();
+    const backendUrl = configuredBackend && configuredBackend.length > 0
+      ? configuredBackend
+      : (import.meta.env.MODE === 'development' ? 'http://localhost:3002' : null);
+
+    if (!backendUrl) {
+      console.error('❌ Multiplayer backend URL is not configured. Set VITE_BACKEND_URL to enable multiplayer.');
+      this.emitInternal('connection_error', { error: 'Backend URL not configured' });
+      this.emitInternal('connection_status', { connected: false, reason: 'configuration_error' });
+      return;
+    }
+
+    this.backendUrl = backendUrl;
 
     console.log('🔗 Connecting to:', backendUrl);
     console.log('🌍 Environment mode:', import.meta.env.MODE);
@@ -155,7 +164,7 @@ export class SocketManager {
       const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 10000);
       console.log(`⏳ Will retry in ${delay}ms (attempt ${this.reconnectAttempts})`);
 
-      this.emitInternal('connection_error', { error: error.message || error.toString() });
+      this.emitInternal('connection_error', { error: error.message || error.toString(), backendUrl: this.backendUrl });
     });
 
     this.socket.on('reconnect', (attemptNumber) => {
@@ -566,7 +575,8 @@ export class SocketManager {
       lastHeartbeat: this.lastHeartbeat,
       timeSinceLastHeartbeat: this.lastHeartbeat ? Date.now() - this.lastHeartbeat : null,
       reconnectAttempts: this.reconnectAttempts,
-      isHealthy: this.isConnectionHealthy()
+      isHealthy: this.isConnectionHealthy(),
+      backendUrl: this.backendUrl
     };
   }
 }

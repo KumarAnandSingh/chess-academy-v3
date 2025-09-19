@@ -88,6 +88,61 @@ const ImprovedLiveChessGame: React.FC<ImprovedLiveChessGameProps> = ({ gameId })
   const [displayWhiteTime, setDisplayWhiteTime] = useState(0);
   const [displayBlackTime, setDisplayBlackTime] = useState(0);
 
+  const applyGameState = useCallback((payload: any, fallbackColor?: 'white' | 'black' | 'spectator') => {
+    if (!payload) {
+      return;
+    }
+
+    const gameStateData = payload.gameState ?? payload;
+    if (!gameStateData) {
+      return;
+    }
+
+    const resolvedTimeControl = gameStateData.timeControl ?? {
+      initial: 300,
+      increment: 0,
+      type: 'blitz'
+    };
+
+    const resolvedPosition = gameStateData.position ?? chess.fen();
+
+    const nextGameData: GameData = {
+      white: {
+        username: gameStateData.white?.username ?? 'White Player',
+        rating: gameStateData.white?.rating ?? 1200
+      },
+      black: {
+        username: gameStateData.black?.username ?? 'Black Player',
+        rating: gameStateData.black?.rating ?? 1200
+      },
+      turn: gameStateData.turn ?? chess.turn(),
+      whiteTime: gameStateData.whiteTime ?? resolvedTimeControl.initial * 1000,
+      blackTime: gameStateData.blackTime ?? resolvedTimeControl.initial * 1000,
+      moveNumber: gameStateData.moveNumber ?? chess.moveNumber(),
+      position: resolvedPosition,
+      timeControl: resolvedTimeControl
+    };
+
+    setGameData(nextGameData);
+
+    if (resolvedPosition) {
+      try {
+        chess.load(resolvedPosition);
+        setGamePosition(resolvedPosition);
+      } catch (error) {
+        console.error('Failed to load position from payload:', error);
+      }
+    }
+
+    setDisplayWhiteTime(nextGameData.whiteTime);
+    setDisplayBlackTime(nextGameData.blackTime);
+    setGameStatus('active');
+    setConnectionStatus('connected');
+
+    const resolvedColor = payload.playerColor ?? gameStateData.playerColor ?? fallbackColor ?? 'spectator';
+    setPlayerColor(resolvedColor);
+  }, [chess]);
+
   // Socket connection and event handling using socketManager
   useEffect(() => {
     console.log('🎮 Setting up game event listeners for gameId:', gameId);
@@ -113,13 +168,7 @@ const ImprovedLiveChessGame: React.FC<ImprovedLiveChessGameProps> = ({ gameId })
 
     const gameStartedCallback = (data: any) => {
       console.log('🎮 Game started in game component:', data);
-      setGameData(data);
-      setGameStatus('active');
-      setPlayerColor(data.playerColor);
-      setGamePosition(data.position);
-      chess.load(data.position);
-      setDisplayWhiteTime(data.whiteTime);
-      setDisplayBlackTime(data.blackTime);
+      applyGameState(data);
     };
 
     const gameJoinedCallback = (data: any) => {
@@ -135,27 +184,7 @@ const ImprovedLiveChessGame: React.FC<ImprovedLiveChessGameProps> = ({ gameId })
       }
 
       if (data.success && data.gameState) {
-        // CRITICAL FIX: Handle the new backend response format
-        const gameStateData = data.gameState;
-
-        setGameData({
-          white: gameStateData.white,
-          black: gameStateData.black,
-          turn: gameStateData.turn,
-          whiteTime: gameStateData.whiteTime,
-          blackTime: gameStateData.blackTime,
-          moveNumber: gameStateData.moveNumber,
-          position: gameStateData.position,
-          timeControl: gameStateData.timeControl
-        });
-
-        setGameStatus('active');
-        setPlayerColor(data.playerColor);
-        setGamePosition(gameStateData.position);
-        chess.load(gameStateData.position);
-        setDisplayWhiteTime(gameStateData.whiteTime);
-        setDisplayBlackTime(gameStateData.blackTime);
-        setConnectionStatus('connected');
+        applyGameState(data);
         console.log('🎮 Game state loaded, player assigned as:', data.playerColor);
       }
     };
@@ -163,27 +192,7 @@ const ImprovedLiveChessGame: React.FC<ImprovedLiveChessGameProps> = ({ gameId })
     const gameRejoinedCallback = (data: any) => {
       console.log('🔄 Game rejoined after navigation:', data);
       if (data.success && data.gameState) {
-        // CRITICAL FIX: Handle the new backend response format for reconnection
-        const gameStateData = data.gameState;
-
-        setGameData({
-          white: gameStateData.white,
-          black: gameStateData.black,
-          turn: gameStateData.turn,
-          whiteTime: gameStateData.whiteTime,
-          blackTime: gameStateData.blackTime,
-          moveNumber: gameStateData.moveNumber,
-          position: gameStateData.position,
-          timeControl: gameStateData.timeControl
-        });
-
-        setGameStatus('active');
-        setPlayerColor(data.playerColor);
-        setGamePosition(gameStateData.position);
-        chess.load(gameStateData.position);
-        setDisplayWhiteTime(gameStateData.whiteTime);
-        setDisplayBlackTime(gameStateData.blackTime);
-        setConnectionStatus('connected');
+        applyGameState(data);
         console.log('🎮 Game state reloaded after reconnection, player color:', data.playerColor);
       }
     };
@@ -202,20 +211,19 @@ const ImprovedLiveChessGame: React.FC<ImprovedLiveChessGameProps> = ({ gameId })
         });
 
         setGameData(prev => {
-          if (!prev) {
-            return {
-              position: data.position,
-              whiteTime: data.whiteTime,
-              blackTime: data.blackTime,
-              turn: data.turn,
-              moveNumber: data.moveNumber,
-              white: { username: 'Player1', rating: 1500 },
-              black: { username: 'Player2', rating: 1500 },
-              timeControl: { type: 'blitz', initial: 300, increment: 3 }
-            };
-          }
+          const base: GameData = prev ?? {
+            white: { username: 'White Player', rating: 1200 },
+            black: { username: 'Black Player', rating: 1200 },
+            position: data.position,
+            whiteTime: data.whiteTime,
+            blackTime: data.blackTime,
+            turn: data.turn,
+            moveNumber: data.moveNumber,
+            timeControl: prev?.timeControl ?? { type: 'blitz', initial: 300, increment: 0 }
+          };
+
           return {
-            ...prev,
+            ...base,
             position: data.position,
             whiteTime: data.whiteTime,
             blackTime: data.blackTime,
@@ -394,7 +402,7 @@ const ImprovedLiveChessGame: React.FC<ImprovedLiveChessGameProps> = ({ gameId })
 
       console.log('🧹 Game cleanup: Removed specific callbacks, preserved socket connection');
     };
-  }, [gameId, gameStatus]);
+  }, [gameId, gameStatus, connectionStatus, applyGameState]);
 
   // Timer countdown
   useEffect(() => {
